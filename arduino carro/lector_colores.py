@@ -116,22 +116,36 @@ def get_dominant_color(hsv):
     return dominant_color
 
 # Función para enviar mensaje HTTP según el color detectado
+# Función para enviar mensaje HTTP según el color detectado
 def send_color_message(color):
     print(f"Color detectado: {color}")
-    '''if color == 'Rojo':
-        url = 'http://192.168.161.157/message?message=/7L'
-    elif color == 'Verde':
-        url = 'http://192.168.161.157/message?message=/8P'
-    elif color == 'Azul':
-        url = 'http://192.168.161.157/message?message=/9N'
-    else:
-        return {'status': 'error', 'message': 'Color no reconocido'}
 
+    # Obtener la IP del motor desde la URL proporcionada
     try:
-        response = requests.get(url)
-        return {'status': 'success', 'response_code': response.status_code}
+        response = requests.get('https://haroldolaya99.pythonanywhere.com/get_ip_motor')
+        if response.status_code == 200:
+            data = response.json()
+            ip_motor = data.get('last_ip_motor')
+            print(f"IP del motor: {ip_motor}")
+            
+            if color == 'Rojo':
+                url = f'http://{ip_motor}/message?message=/7L'
+            elif color == 'Verde':
+                url = f'http://{ip_motor}/message?message=/8P'
+            elif color == 'Azul':
+                url = f'http://{ip_motor}/message?message=/9N'
+            else:
+                return {'status': 'error', 'message': 'Color no reconocido'}
+
+            try:
+                response = requests.get(url)
+                return {'status': 'success', 'response_code': response.status_code}
+            except Exception as e:
+                return {'status': 'error', 'message': str(e)}
+        else:
+            return {'status': 'error', 'message': 'No se pudo obtener la IP del motor'}
     except Exception as e:
-        return {'status': 'error', 'message': str(e)}'''
+        return {'status': 'error', 'message': f"Error al obtener la IP del motor: {str(e)}"}
 
 # Función que se ejecuta al iniciar la aplicación
 def print_and_send_ip_on_start():
