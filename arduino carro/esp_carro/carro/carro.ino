@@ -1,9 +1,10 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>     // 🔹 Asegúrate de tener esta línea
 #include <TM1637Display.h>
 
-const char* ssid = "Harold Olaya";
-const char* password = "haroldolaya";
+const char* ssid = "Ospina_Beltran";
+const char* password = "D4NN418_D4V1D13_0SC4R85";
 WebServer server(80);
 
 const int CLK = 22;
@@ -137,13 +138,32 @@ void handleMessage() {
     }
 }
 
+// 🔹 Esta es la función que envía la IP al servidor Flask
+void sendIpToFlask(String ip) {
+    HTTPClient http;
+    String url = "https://haroldolaya99.pythonanywhere.com/set_ip_motor?set_ip_motor=" + ip;
+
+    http.begin(url);
+    int httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+        Serial.print("IP enviada al servidor Flask, código de respuesta: ");
+        Serial.println(httpResponseCode);
+    } else {
+        Serial.print("Error al enviar la IP: ");
+        Serial.println(http.errorToString(httpResponseCode).c_str());
+    }
+
+    http.end();
+}
+
 void setup() {
     Serial.begin(115200);
     WiFi.begin(ssid, password);
 
     setupRGB();
-    pinMode(2, INPUT_PULLUP);  // Configurar pin 2 como entrada con resistencia interna
-    attachInterrupt(digitalPinToInterrupt(2), displayInterrupt, FALLING);  // Interrupción en el pin 2
+    pinMode(2, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(2), displayInterrupt, FALLING);
     display.setBrightness(0x0f);
     display.showNumberDec(1234);
 
@@ -155,6 +175,9 @@ void setup() {
     Serial.println("\nConectado a la red WiFi");
     Serial.print("Dirección IP: ");
     Serial.println(WiFi.localIP());
+
+    // 🔹 Enviar IP al servidor Flask una vez conectado
+    sendIpToFlask(WiFi.localIP().toString());
 
     server.on("/message", HTTP_GET, handleMessage);
     server.begin();
