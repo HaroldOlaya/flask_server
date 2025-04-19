@@ -1,0 +1,145 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <TM1637Display.h>
+
+const char* ssid = "Harold Olaya";
+const char* password = "haroldolaya";
+WebServer server(80);
+
+const int CLK = 22;
+const int DIO = 21;
+TM1637Display display(CLK, DIO);
+
+const int redPin = 15;
+const int greenPin = 2;
+const int bluePin = 4;
+
+void setupRGB() {
+    pinMode(redPin, OUTPUT);
+    pinMode(greenPin, OUTPUT);
+    pinMode(bluePin, OUTPUT);
+}
+
+void setRGBColor(int r, int g, int b) {
+    analogWrite(redPin, r);
+    analogWrite(greenPin, g);
+    analogWrite(bluePin, b);
+}
+
+void ledRojo() {
+    setRGBColor(255, 0, 0);
+    Serial.println("LED Rojo encendido");
+}
+
+void ledVerde() {
+    setRGBColor(0, 255, 0);
+    Serial.println("LED Verde encendido");
+}
+
+void ledAzul() {
+    setRGBColor(0, 0, 255);
+    Serial.println("LED Azul encendido");
+}
+
+void IRAM_ATTR displayInterrupt() {
+    static int counter = 0;
+    counter++;
+    display.showNumberDec(counter);
+    Serial.println("Display actualizado con: " + String(counter));
+}
+
+void definirFuncion(char dispositivo, char func) {
+    switch (dispositivo) {
+        case '1':
+            Serial.println("Dispositivo: 1");
+            break;
+        case '2':
+            Serial.println("Dispositivo: 2");
+            break;
+        case '3':
+            Serial.println("Dispositivo: 3");
+            break;
+        case '4':
+            Serial.println("Dispositivo: 4");
+            break;
+        case '5':
+            Serial.println("Dispositivo: 5");
+            break;
+        case '6':
+            Serial.println("Dispositivo: 6");
+            break;
+        case '7':
+            Serial.println("Dispositivo: 7");
+            break;
+        case '8':
+            Serial.println("Dispositivo: 8");
+            break;
+        case '9':
+            Serial.println("Dispositivo: 9");
+            break;
+        case ';':
+            Serial.println("Dispositivo: ;");
+            break;
+        case ':':
+            Serial.println("Dispositivo: :");
+            break;
+        default:
+            Serial.println("Dispositivo no reconocido.");
+            break;
+    }
+}
+
+void handleMessage() {
+    if (server.hasArg("message")) {
+        String message = server.arg("message");
+        Serial.print("Mensaje recibido: ");
+        Serial.println(message);
+
+        if (message.length() == 3 && message[0] == '/') {
+            char dispositivo = message[1];
+            char func = message[2];
+            definirFuncion(dispositivo, func);
+            server.send(200, "text/plain", "Mensaje procesado correctamente");
+            
+        } else {
+            Serial.println("Error: Formato de mensaje incorrecto.");
+            server.send(400, "text/plain", "Error: Formato incorrecto, debe tener 3 caracteres y comenzar con /");
+        }
+    } else {
+        Serial.println("Error: No se recibió el mensaje");
+        server.send(400, "text/plain", "Error: No se recibió el mensaje");
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    WiFi.begin(ssid, password);
+
+    setupRGB();
+    pinMode(2, INPUT_PULLUP);  // Configurar pin 2 como entrada con resistencia interna
+    attachInterrupt(digitalPinToInterrupt(2), displayInterrupt, FALLING);  // Interrupción en el pin 2
+    display.setBrightness(0x0f);
+    display.showNumberDec(1234);
+    WiFi.begin(ssid, password);
+
+    setupRGB();
+    display.setBrightness(0x0f);
+    display.showNumberDec(1234);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("\nConectado a la red WiFi");
+    Serial.print("Dirección IP: ");
+    Serial.println(WiFi.localIP());
+
+    server.on("/message", HTTP_GET, handleMessage);
+    server.begin();
+    Serial.println("Servidor web iniciado.");
+}
+
+void loop() {
+    server.handleClient();
+}
