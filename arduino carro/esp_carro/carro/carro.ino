@@ -1,20 +1,36 @@
 #include <WiFi.h>
 #include <WebServer.h>
-#include <HTTPClient.h>     // 🔹 Asegúrate de tener esta línea
+#include <HTTPClient.h>
 #include <TM1637Display.h>
 
 const char* ssid = "Ospina_Beltran";
 const char* password = "D4NN418_D4V1D13_0SC4R85";
 WebServer server(80);
 
+// Display 7 segmentos
 const int CLK = 22;
 const int DIO = 21;
 TM1637Display display(CLK, DIO);
 
+// Pines RGB
 const int redPin = 19;
 const int greenPin = 5;
 const int bluePin = 18;
 
+// Pulsador
+const int buttonPin = 2;
+int lastState = HIGH;
+int counter = 0;
+
+// Sensor Hall externo
+const int hallPin = 35;
+int minHall = 2300;
+int maxHall = 2850; // Ajusta según tus pruebas
+bool lastHallDetected = false;
+
+// ------------------------------------
+// FUNCIONES RGB
+// ------------------------------------
 void setupRGB() {
     pinMode(redPin, OUTPUT);
     pinMode(greenPin, OUTPUT);
@@ -42,22 +58,19 @@ void ledAzul() {
     Serial.println("LED Azul encendido");
 }
 
-void motorEncender(){
+void motorEncender() {
     setRGBColor(HIGH, HIGH, LOW);
     Serial.println("Motor encendido");
 }
-void motorDetener(){
+
+void motorDetener() {
     setRGBColor(HIGH, HIGH, HIGH);
     Serial.println("Motor apagado");
 }
 
-void IRAM_ATTR displayInterrupt() {
-    static int counter = 0;
-    counter++;
-    display.showNumberDec(counter);
-    Serial.println("Display actualizado con: " + String(counter));
-}
-
+// ------------------------------------
+// DECODIFICACIÓN DE MENSAJE
+// ------------------------------------
 void definirFuncion(char dispositivo, char func) {
     switch (dispositivo) {
         case '1':
@@ -73,7 +86,6 @@ void definirFuncion(char dispositivo, char func) {
         case '7':
             Serial.println("Dispositivo: 7");
             if (func == 'L') {
-                Serial.println("Función L");
                 ledRojo();
             } else if (func == 'M') {
                 Serial.println("Función M");
@@ -84,7 +96,6 @@ void definirFuncion(char dispositivo, char func) {
         case '8':
             Serial.println("Dispositivo: 8");
             if (func == 'P') {
-                Serial.println("Función P");
                 ledVerde();
             } else if (func == 'Q') {
                 Serial.println("Función Q");
@@ -95,20 +106,12 @@ void definirFuncion(char dispositivo, char func) {
         case '9':
             Serial.println("Dispositivo: 9");
             if (func == 'N') {
-                Serial.println("Función N");
                 motorEncender();
             } else if (func == 'O') {
-                Serial.println("Función O");
                 motorDetener();
             } else {
                 Serial.println("Función no reconocida para dispositivo 9");
             }
-            break;
-        case ';':
-            Serial.println("Dispositivo: ;");
-            break;
-        case ':':
-            Serial.println("Dispositivo: :");
             break;
         default:
             Serial.println("Dispositivo no reconocido.");
@@ -127,18 +130,17 @@ void handleMessage() {
             char func = message[2];
             definirFuncion(dispositivo, func);
             server.send(200, "text/plain", "Mensaje procesado correctamente");
-            
         } else {
-            Serial.println("Error: Formato de mensaje incorrecto.");
             server.send(400, "text/plain", "Error: Formato incorrecto, debe tener 3 caracteres y comenzar con /");
         }
     } else {
-        Serial.println("Error: No se recibió el mensaje");
         server.send(400, "text/plain", "Error: No se recibió el mensaje");
     }
 }
 
-// 🔹 Esta es la función que envía la IP al servidor Flask
+// ------------------------------------
+// ENVIAR IP A FLASK
+// ------------------------------------
 void sendIpToFlask(String ip) {
     HTTPClient http;
     String url = "https://haroldolaya99.pythonanywhere.com/set_ip_motor?set_ip_motor=" + ip;
@@ -147,7 +149,7 @@ void sendIpToFlask(String ip) {
     int httpResponseCode = http.GET();
 
     if (httpResponseCode > 0) {
-        Serial.print("IP enviada al servidor Flask, código de respuesta: ");
+        Serial.print("IP enviada al servidor Flask. Código: ");
         Serial.println(httpResponseCode);
     } else {
         Serial.print("Error al enviar la IP: ");
@@ -157,15 +159,40 @@ void sendIpToFlask(String ip) {
     http.end();
 }
 
+// ------------------------------------
+// FUNCIONES DEL SENSOR HALL Y CONTADOR
+// ------------------------------------
+void detectarCampoMagneticoYContar() {
+    int hallValue = analogRead(hallPin);
+    Serial.println("Valor del sensor Hall: " + String(hallValue));
+
+    // Si el valor está fuera del rango aceptado (hay campo magnético fuerte)
+    if ((hallValue < minHall || hallValue > maxHall) && !lastHallDetected) {
+        counter++;
+        display.showNumberDec(counter, true);
+        Serial.println("¡Campo magnético detectado! Contador: " + String(counter));
+        lastHallDetected = true;
+
+        delay(1000); // Esperar 1 segundo para evitar rebotes o múltiples detecciones
+    } 
+    else if (hallValue >= 2500 && hallValue <= 2700) {
+        // Restablecer el estado solo si volvemos al rango sin campo
+        lastHallDetected = false;
+    }
+}
+
+// ------------------------------------
+// SETUP
+// ------------------------------------
 void setup() {
     Serial.begin(115200);
     WiFi.begin(ssid, password);
 
     setupRGB();
-    pinMode(2, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(2), displayInterrupt, FALLING);
-    display.setBrightness(0x0f);
-    display.showNumberDec(1234);
+    pinMode(buttonPin, INPUT_PULLUP);  // Pulsador con resistencia pull-up
+    pinMode(hallPin, INPUT);           // Sensor hall externo
+    display.setBrightness(5);
+    display.showNumberDec(counter); // Mostrar valor inicial
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -176,7 +203,6 @@ void setup() {
     Serial.print("Dirección IP: ");
     Serial.println(WiFi.localIP());
 
-    // 🔹 Enviar IP al servidor Flask una vez conectado
     sendIpToFlask(WiFi.localIP().toString());
 
     server.on("/message", HTTP_GET, handleMessage);
@@ -185,6 +211,13 @@ void setup() {
     ledAzul();
 }
 
+// ------------------------------------
+// LOOP PRINCIPAL
+// ------------------------------------
 void loop() {
     server.handleClient();
+    display.showNumberDec(counter, true);
+    // Sensor hall
+    detectarCampoMagneticoYContar();
+ // Pausa ligera para estabilidad
 }
