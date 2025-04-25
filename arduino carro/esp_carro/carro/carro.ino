@@ -25,8 +25,12 @@ int counter = 0;
 // Sensor Hall externo
 const int hallPin = 35;
 int minHall = 2300;
-int maxHall = 2850; // Ajusta según tus pruebas
+int maxHall = 3100; // Ajusta según tus pruebas
 bool lastHallDetected = false;
+bool Hallactivated =false;
+bool ledRojoActivo = false;
+bool ledVerdeActivo = false;
+bool ledAzulActivo = false;
 
 // ------------------------------------
 // FUNCIONES RGB
@@ -45,16 +49,19 @@ void setRGBColor(int r, int g, int b) {
 
 void ledRojo() {
     setRGBColor(LOW, HIGH, HIGH); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    ledRojoActivo = true;
     Serial.println("LED Rojo encendido");
 }
 
 void ledVerde() {
     setRGBColor(HIGH, LOW, HIGH); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    ledVerdeActivo = true;
     Serial.println("LED Verde encendido");
 }
 
 void ledAzul() {
     setRGBColor(HIGH, HIGH, LOW); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    ledAzulActivo = true;
     Serial.println("LED Azul encendido");
 }
 
@@ -76,9 +83,11 @@ void definirFuncion(char dispositivo, char func) {
         case '1':
             Serial.println("Dispositivo: 1");
             if (func == 'A') {
-                Serial.println("Motor A");
+                Serial.println("hal encendido");
+                Hallactivated = true;
             } else if (func == 'B') {
-                Serial.println("Motor B");
+                Serial.println("hall apagado");
+                Hallactivated = false;
             } else {
                 Serial.println("Función no reconocida para dispositivo 1");
             }
@@ -88,7 +97,7 @@ void definirFuncion(char dispositivo, char func) {
             if (func == 'L') {
                 ledRojo();
             } else if (func == 'M') {
-                Serial.println("Función M");
+                ledAzul();
             } else {
                 Serial.println("Función no reconocida para dispositivo 7");
             }
@@ -117,6 +126,16 @@ void definirFuncion(char dispositivo, char func) {
             Serial.println("Dispositivo no reconocido.");
             break;
     }
+}
+void handleEstado() {
+    String json = "{";
+    json += "\"contador\":" + String(counter) + ",";
+    json += "\"led_rojo\":" + String(ledRojoActivo ? "true" : "false") + ",";
+    json += "\"led_verde\":" + String(ledVerdeActivo ? "true" : "false") + ",";
+    json += "\"led_azul\":" + String(ledAzulActivo ? "true" : "false");
+    json += "}";
+
+    server.send(200, "application/json", json);
 }
 
 void handleMessage() {
@@ -204,11 +223,14 @@ void setup() {
     Serial.println(WiFi.localIP());
 
     sendIpToFlask(WiFi.localIP().toString());
-
+    server.on("/estado", HTTP_GET, handleEstado);
     server.on("/message", HTTP_GET, handleMessage);
     server.begin();
     Serial.println("Servidor web iniciado.");
     ledAzul();
+    ledAzulActivo = false;
+    ledRojoActivo = false;
+    ledVerdeActivo =false;
 }
 
 // ------------------------------------
@@ -216,8 +238,11 @@ void setup() {
 // ------------------------------------
 void loop() {
     server.handleClient();
-    display.showNumberDec(counter, true);
+    if (Hallactivated){
+        display.showNumberDec(counter, true);
     // Sensor hall
-    detectarCampoMagneticoYContar();
+        detectarCampoMagneticoYContar();
+    }
+    
  // Pausa ligera para estabilidad
 }
