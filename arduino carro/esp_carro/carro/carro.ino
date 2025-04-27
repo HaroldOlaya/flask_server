@@ -3,6 +3,8 @@
 #include <HTTPClient.h>
 #include <TM1637Display.h>
 
+//const char* ssid = "Harold Olaya";
+//const char* password = "haroldolaya";
 const char* ssid = "Ospina_Beltran";
 const char* password = "D4NN418_D4V1D13_0SC4R85";
 WebServer server(80);
@@ -12,11 +14,16 @@ const int CLK = 22;
 const int DIO = 21;
 TM1637Display display(CLK, DIO);
 
+//Pines motores
+#define MOTOR_DER_ADELANTE 13
+#define MOTOR_DER_ATRAS    12
+#define MOTOR_IZQ_ADELANTE 27
+#define MOTOR_IZQ_ATRAS    14
 // Pines RGB
 const int redPin = 19;
 const int greenPin = 5;
 const int bluePin = 18;
-
+const int yellowPin = 4;
 // Pulsador
 const int buttonPin = 2;
 int lastState = HIGH;
@@ -31,6 +38,7 @@ bool Hallactivated =false;
 bool ledRojoActivo = false;
 bool ledVerdeActivo = false;
 bool ledAzulActivo = false;
+bool ledAmarilloActivo = false;
 
 // ------------------------------------
 // FUNCIONES RGB
@@ -39,6 +47,7 @@ void setupRGB() {
     pinMode(redPin, OUTPUT);
     pinMode(greenPin, OUTPUT);
     pinMode(bluePin, OUTPUT);
+    pinMode(yellowPin,OUTPUT);
 }
 
 void setRGBColor(int r, int g, int b) {
@@ -65,14 +74,62 @@ void ledAzul() {
     Serial.println("LED Azul encendido");
 }
 
-void motorEncender() {
-    setRGBColor(HIGH, HIGH, LOW);
-    Serial.println("Motor encendido");
+void ledAmarillo(){
+    digitalWrite(yellowPin, HIGH); // Pone en alto el pin 2
+    delay(500);            // Espera 500 milisegundos
+    digitalWrite(yellowPin, LOW);
+    ledAmarilloActivo = true;
+}
+// Función corregida para mover la derecha hacia atrás
+void derechaAtras() {
+  digitalWrite(MOTOR_DER_ADELANTE, HIGH);
+  digitalWrite(MOTOR_DER_ATRAS, LOW);
+  Serial.println("Motor derecho hacia ATRÁS");
 }
 
-void motorDetener() {
-    setRGBColor(HIGH, HIGH, HIGH);
-    Serial.println("Motor apagado");
+// Función corregida para mover la derecha hacia adelante
+void derechaAdelante() {
+  digitalWrite(MOTOR_DER_ADELANTE, LOW);
+  digitalWrite(MOTOR_DER_ATRAS, HIGH);
+  Serial.println("Motor derecho hacia ADELANTE");
+}
+
+// Función corregida para mover la izquierda hacia atrás
+void izquierdaAtras() {
+  digitalWrite(MOTOR_IZQ_ADELANTE, HIGH);
+  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
+  Serial.println("Motor izquierdo hacia ATRÁS");
+}
+
+// Función corregida para mover la izquierda hacia adelante
+void izquierdaAdelante() {
+  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
+  digitalWrite(MOTOR_IZQ_ATRAS, HIGH);
+  Serial.println("Motor izquierdo hacia ADELANTE");
+}
+
+void girarDerecha() {
+  Serial.println("Girando a la derecha");
+  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
+  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
+  izquierdaAdelante();
+  delay(1000);
+}
+
+void girarIzquierda() {
+  Serial.println("Girando a la izquierda");
+  digitalWrite(MOTOR_DER_ADELANTE, LOW);
+  digitalWrite(MOTOR_DER_ATRAS, LOW);
+  derechaAdelante();
+  delay(1000);
+}
+
+void detener() {
+  digitalWrite(MOTOR_DER_ADELANTE, LOW);
+  digitalWrite(MOTOR_DER_ATRAS, LOW);
+  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
+  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
+  Serial.println("Motores detenidos");
 }
 
 // ------------------------------------
@@ -92,12 +149,18 @@ void definirFuncion(char dispositivo, char func) {
                 Serial.println("Función no reconocida para dispositivo 1");
             }
             break;
-        case '7':
+        case '2':
             Serial.println("Dispositivo: 7");
-            if (func == 'L') {
+            if (func == 'C') {
                 ledRojo();
-            } else if (func == 'M') {
+            } else if (func == 'D') {
                 ledAzul();
+            }
+            else if (func == 'E') {
+                ledVerde();
+            }
+            else if (func == 'F') {
+                ledAmarillo();
             } else {
                 Serial.println("Función no reconocida para dispositivo 7");
             }
@@ -115,9 +178,9 @@ void definirFuncion(char dispositivo, char func) {
         case '9':
             Serial.println("Dispositivo: 9");
             if (func == 'N') {
-                motorEncender();
+                Serial.println("pendiente motores 9");
             } else if (func == 'O') {
-                motorDetener();
+                Serial.println("pendiente motores 9");
             } else {
                 Serial.println("Función no reconocida para dispositivo 9");
             }
@@ -132,6 +195,7 @@ void handleEstado() {
     json += "\"contador\":" + String(counter) + ",";
     json += "\"led_rojo\":" + String(ledRojoActivo ? "true" : "false") + ",";
     json += "\"led_verde\":" + String(ledVerdeActivo ? "true" : "false") + ",";
+    json += "\"led_amarillo\":" + String(ledAmarilloActivo ? "true" : "false") + ",";
     json += "\"led_azul\":" + String(ledAzulActivo ? "true" : "false");
     json += "}";
 
@@ -199,14 +263,19 @@ void detectarCampoMagneticoYContar() {
         lastHallDetected = false;
     }
 }
-
+void setupMotores(){
+  pinMode(MOTOR_DER_ADELANTE, OUTPUT);
+  pinMode(MOTOR_DER_ATRAS, OUTPUT);
+  pinMode(MOTOR_IZQ_ADELANTE, OUTPUT);
+  pinMode(MOTOR_IZQ_ATRAS, OUTPUT);
+}
 // ------------------------------------
 // SETUP
 // ------------------------------------
 void setup() {
     Serial.begin(115200);
     WiFi.begin(ssid, password);
-
+    setupMotores();
     setupRGB();
     pinMode(buttonPin, INPUT_PULLUP);  // Pulsador con resistencia pull-up
     pinMode(hallPin, INPUT);           // Sensor hall externo
