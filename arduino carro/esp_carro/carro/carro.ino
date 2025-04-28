@@ -25,10 +25,10 @@ const int greenPin = 5;
 const int bluePin = 18;
 const int yellowPin = 4;
 // Pulsador
-const int buttonPin = 2;
 int lastState = HIGH;
 int counter = 0;
-
+// camera
+const int ledCamara = 15;
 // Sensor Hall externo
 const int hallPin = 35;
 int minHall = 2300;
@@ -110,18 +110,16 @@ void izquierdaAdelante() {
 
 void girarDerecha() {
   Serial.println("Girando a la derecha");
-  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
-  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
+  digitalWrite(MOTOR_DER_ADELANTE, LOW);
+  digitalWrite(MOTOR_DER_ATRAS, LOW);
   izquierdaAdelante();
-  delay(1000);
 }
 
 void girarIzquierda() {
   Serial.println("Girando a la izquierda");
-  digitalWrite(MOTOR_DER_ADELANTE, LOW);
-  digitalWrite(MOTOR_DER_ATRAS, LOW);
+  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
+  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
   derechaAdelante();
-  delay(1000);
 }
 
 void detener() {
@@ -131,26 +129,27 @@ void detener() {
   digitalWrite(MOTOR_IZQ_ATRAS, LOW);
   Serial.println("Motores detenidos");
 }
+void Oncamara(){
+    digitalWrite(ledCamara,HIGH);
 
+}
+void Offcamara(){
+    digitalWrite(ledCamara,LOW);
+}
 // ------------------------------------
 // DECODIFICACIÓN DE MENSAJE
 // ------------------------------------
 void definirFuncion(char dispositivo, char func) {
     switch (dispositivo) {
         case '1':
-            Serial.println("Dispositivo: 1");
             if (func == 'A') {
-                Serial.println("hal encendido");
                 Hallactivated = true;
             } else if (func == 'B') {
-                Serial.println("hall apagado");
                 Hallactivated = false;
-            } else {
-                Serial.println("Función no reconocida para dispositivo 1");
             }
             break;
         case '2':
-            Serial.println("Dispositivo: 7");
+            Serial.println("Dispositivo: 2");
             if (func == 'C') {
                 ledRojo();
             } else if (func == 'D') {
@@ -161,30 +160,33 @@ void definirFuncion(char dispositivo, char func) {
             }
             else if (func == 'F') {
                 ledAmarillo();
-            } else {
-                Serial.println("Función no reconocida para dispositivo 7");
             }
             break;
-        case '8':
-            Serial.println("Dispositivo: 8");
-            if (func == 'P') {
-                ledVerde();
-            } else if (func == 'Q') {
-                Serial.println("Función Q");
-            } else {
-                Serial.println("Función no reconocida para dispositivo 8");
+        case '3':
+            if (func == 'G'){
+                Oncamara();
+            }
+            else if (func == 'H'){
+                Offcamara();
             }
             break;
-        case '9':
-            Serial.println("Dispositivo: 9");
-            if (func == 'N') {
-                Serial.println("pendiente motores 9");
-            } else if (func == 'O') {
-                Serial.println("pendiente motores 9");
-            } else {
-                Serial.println("Función no reconocida para dispositivo 9");
+        case '4':
+            if (func == 'I'){ //funcion para avanzar
+                derechaAdelante();
+                izquierdaAdelante();
             }
-            break;
+            else if(func == 'J'){ // funcion para devolver
+                derechaAtras();
+                izquierdaAtras();
+            }
+            else if(func == 'K'){ // funcion para girar derecha
+                girarDerecha();
+            }
+            else if(func == 'L'){ // funcion para girar izquierda
+                girarIzquierda();
+            }else if(func == 'M'){ // funcion para detener carro
+                detener();
+            }break;
         default:
             Serial.println("Dispositivo no reconocido.");
             break;
@@ -268,6 +270,10 @@ void setupMotores(){
   pinMode(MOTOR_DER_ATRAS, OUTPUT);
   pinMode(MOTOR_IZQ_ADELANTE, OUTPUT);
   pinMode(MOTOR_IZQ_ATRAS, OUTPUT);
+  digitalWrite(MOTOR_DER_ADELANTE, LOW);
+  digitalWrite(MOTOR_DER_ATRAS, LOW);
+  digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
+  digitalWrite(MOTOR_IZQ_ATRAS, LOW);
 }
 // ------------------------------------
 // SETUP
@@ -277,7 +283,7 @@ void setup() {
     WiFi.begin(ssid, password);
     setupMotores();
     setupRGB();
-    pinMode(buttonPin, INPUT_PULLUP);  // Pulsador con resistencia pull-up
+    pinMode(ledCamara, OUTPUT); // Pulsador con resistencia pull-up
     pinMode(hallPin, INPUT);           // Sensor hall externo
     display.setBrightness(5);
     display.showNumberDec(counter); // Mostrar valor inicial
