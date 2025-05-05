@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Cámara</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .video-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        img {
+            border: 5px solid #ddd;
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        form {
+            display: inline-block;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #e0e0e0;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #d5d5d5;
+        }
+
+        .activo {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Control de Cámara</h1>
+
+    <div class="video-container">
+        <img src="{{ url_for('view_video') }}" alt="Video en Vivo">
+    </div>
+
+    <div class="button-container">
+        <form method="POST" action="{{ url_for('set_mode', mode='color') }}">
+            <button type="submit" class="{{ 'activo' if mode == 'color' else '' }}">Colores</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('set_mode', mode='desactivar') }}">
+            <button type="submit" class="{{ 'activo' if mode == 'desactivar' else '' }}">Desactivar</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('set_mode', mode='linea') }}">
+            <button type="submit" class="{{ 'activo' if mode == 'linea' else '' }}">Línea</button>
+        </form>
+    </div>
+</body>
+</html>
