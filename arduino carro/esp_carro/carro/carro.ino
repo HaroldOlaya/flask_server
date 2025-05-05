@@ -31,8 +31,8 @@ int counter = 0;
 const int ledCamara = 15;
 // Sensor Hall externo
 const int hallPin = 35;
-int minHall = 2300;
-int maxHall = 3100; // Ajusta según tus pruebas
+int minHall = 2000;
+int maxHall = 2100; // Ajusta según tus pruebas
 bool lastHallDetected = false;
 bool Hallactivated =false;
 bool ledRojoActivo = false;
@@ -306,6 +306,7 @@ void setup() {
     ledAzulActivo = false;
     ledRojoActivo = false;
     ledVerdeActivo =false;
+    Offcamara();
 }
 
 // ------------------------------------
