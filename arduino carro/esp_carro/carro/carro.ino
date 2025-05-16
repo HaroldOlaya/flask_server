@@ -23,15 +23,20 @@ TM1637Display display(CLK, DIO);
 const int redPin = 19;
 const int greenPin = 5;
 const int bluePin = 18;
-const int yellowPin = 4;
+// Pines seguidor de linea
+const int sensorDerecho = 26;
+const int sensorCentral = 25;
+const int sensorIzquierdo = 23;
 // Pulsador
 int lastState = HIGH;
 int counter = 0;
 // camera
 const int ledCamara = 15;
+const int baseCamera = 4;
 // Sensor Hall externo
 const int hallPin = 35;
-int minHall = 2000;
+int minHall = 1800;
+int actHall;
 int maxHall = 2100; // Ajusta según tus pruebas
 bool lastHallDetected = false;
 bool Hallactivated =false;
@@ -39,6 +44,12 @@ bool ledRojoActivo = false;
 bool ledVerdeActivo = false;
 bool ledAzulActivo = false;
 bool ledAmarilloActivo = false;
+bool linterna = false;
+bool camara = false;
+bool derecha = false;
+bool izquierda = false;
+bool centro = false;
+bool seguidor = false;
 
 // ------------------------------------
 // FUNCIONES RGB
@@ -47,7 +58,6 @@ void setupRGB() {
     pinMode(redPin, OUTPUT);
     pinMode(greenPin, OUTPUT);
     pinMode(bluePin, OUTPUT);
-    pinMode(yellowPin,OUTPUT);
 }
 
 void setRGBColor(int r, int g, int b) {
@@ -55,68 +65,62 @@ void setRGBColor(int r, int g, int b) {
     digitalWrite(greenPin, g);
     digitalWrite(bluePin, b);
 }
+void setupLinea(){
+  pinMode(sensorDerecho, INPUT);
+  pinMode(sensorCentral, INPUT);
+  pinMode(sensorIzquierdo, INPUT);
+}
 
 void ledRojo() {
-    setRGBColor(LOW, HIGH, HIGH); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    setRGBColor(HIGH, LOW, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
     ledRojoActivo = true;
-    Serial.println("LED Rojo encendido");
 }
 
 void ledVerde() {
-    setRGBColor(HIGH, LOW, HIGH); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    setRGBColor(LOW, HIGH, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
     ledVerdeActivo = true;
-    Serial.println("LED Verde encendido");
 }
 
 void ledAzul() {
-    setRGBColor(HIGH, HIGH, LOW); delay(500); setRGBColor(HIGH, HIGH, HIGH);
+    setRGBColor(LOW, LOW, HIGH); delay(500); setRGBColor(LOW, LOW, LOW);
     ledAzulActivo = true;
-    Serial.println("LED Azul encendido");
 }
 
 void ledAmarillo(){
-    digitalWrite(yellowPin, HIGH); // Pone en alto el pin 2
-    delay(500);            // Espera 500 milisegundos
-    digitalWrite(yellowPin, LOW);
+    setRGBColor(HIGH, HIGH, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
     ledAmarilloActivo = true;
 }
 // Función corregida para mover la derecha hacia atrás
 void derechaAtras() {
   digitalWrite(MOTOR_DER_ADELANTE, HIGH);
   digitalWrite(MOTOR_DER_ATRAS, LOW);
-  Serial.println("Motor derecho hacia ATRÁS");
 }
 
 // Función corregida para mover la derecha hacia adelante
 void derechaAdelante() {
   digitalWrite(MOTOR_DER_ADELANTE, LOW);
   digitalWrite(MOTOR_DER_ATRAS, HIGH);
-  Serial.println("Motor derecho hacia ADELANTE");
 }
 
 // Función corregida para mover la izquierda hacia atrás
 void izquierdaAtras() {
   digitalWrite(MOTOR_IZQ_ADELANTE, HIGH);
   digitalWrite(MOTOR_IZQ_ATRAS, LOW);
-  Serial.println("Motor izquierdo hacia ATRÁS");
 }
 
 // Función corregida para mover la izquierda hacia adelante
 void izquierdaAdelante() {
   digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
   digitalWrite(MOTOR_IZQ_ATRAS, HIGH);
-  Serial.println("Motor izquierdo hacia ADELANTE");
 }
 
 void girarDerecha() {
-  Serial.println("Girando a la derecha");
   digitalWrite(MOTOR_DER_ADELANTE, LOW);
   digitalWrite(MOTOR_DER_ATRAS, LOW);
   izquierdaAdelante();
 }
 
 void girarIzquierda() {
-  Serial.println("Girando a la izquierda");
   digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
   digitalWrite(MOTOR_IZQ_ATRAS, LOW);
   derechaAdelante();
@@ -127,14 +131,25 @@ void detener() {
   digitalWrite(MOTOR_DER_ATRAS, LOW);
   digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
   digitalWrite(MOTOR_IZQ_ATRAS, LOW);
-  Serial.println("Motores detenidos");
 }
 void Oncamara(){
-    digitalWrite(ledCamara,HIGH);
+    setRGBColor(LOW, HIGH, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
+    digitalWrite(baseCamera,HIGH);
+    camara = true;
 
 }
 void Offcamara(){
+    setRGBColor(HIGH, LOW, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
+    digitalWrite(baseCamera,LOW);
+    camara = false;
+}
+void onlinterna(){
+    digitalWrite(ledCamara,HIGH);
+    linterna = true;
+}
+void offlinterna(){
     digitalWrite(ledCamara,LOW);
+    linterna = false;
 }
 // ------------------------------------
 // DECODIFICACIÓN DE MENSAJE
@@ -149,7 +164,6 @@ void definirFuncion(char dispositivo, char func) {
             }
             break;
         case '2':
-            Serial.println("Dispositivo: 2");
             if (func == 'C') {
                 ledRojo();
             } else if (func == 'D') {
@@ -187,6 +201,21 @@ void definirFuncion(char dispositivo, char func) {
             }else if(func == 'M'){ // funcion para detener carro
                 detener();
             }break;
+        case '5':
+            if (func == 'N'){
+                onlinterna();
+            }else if(func == 'O'){
+                offlinterna();
+            }
+            break;
+        case '6':
+            if (func == 'P'){
+                seguidor = true;
+            }else if(func == 'Q'){
+                seguidor = false;
+                detener();
+            }
+            break;
         default:
             Serial.println("Dispositivo no reconocido.");
             break;
@@ -198,7 +227,13 @@ void handleEstado() {
     json += "\"led_rojo\":" + String(ledRojoActivo ? "true" : "false") + ",";
     json += "\"led_verde\":" + String(ledVerdeActivo ? "true" : "false") + ",";
     json += "\"led_amarillo\":" + String(ledAmarilloActivo ? "true" : "false") + ",";
-    json += "\"led_azul\":" + String(ledAzulActivo ? "true" : "false");
+    json += "\"derecha\":" + String(derecha ? "true" : "false") + ",";
+    json += "\"centro\":" + String(centro ? "true" : "false") + ",";
+    json += "\"izquierda\":" + String(izquierda ? "true" : "false") + ",";
+    json += "\"led_azul\":" + String(ledAzulActivo ? "true" : "false") + ",";
+    json += "\"actHall\":" + String(actHall) + ",";
+    json += "\"linterna\":" + String(linterna ? "true" : "false") + ",";
+    json += "\"camara\":" + String(camara ? "true" : "false");
     json += "}";
 
     server.send(200, "application/json", json);
@@ -207,9 +242,6 @@ void handleEstado() {
 void handleMessage() {
     if (server.hasArg("message")) {
         String message = server.arg("message");
-        Serial.print("Mensaje recibido: ");
-        Serial.println(message);
-
         if (message.length() == 3 && message[0] == '/') {
             char dispositivo = message[1];
             char func = message[2];
@@ -248,19 +280,19 @@ void sendIpToFlask(String ip) {
 // FUNCIONES DEL SENSOR HALL Y CONTADOR
 // ------------------------------------
 void detectarCampoMagneticoYContar() {
+    setRGBColor(LOW, HIGH, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
     int hallValue = analogRead(hallPin);
+    actHall = hallValue;
     Serial.println("Valor del sensor Hall: " + String(hallValue));
 
     // Si el valor está fuera del rango aceptado (hay campo magnético fuerte)
     if ((hallValue < minHall || hallValue > maxHall) && !lastHallDetected) {
         counter++;
         display.showNumberDec(counter, true);
-        Serial.println("¡Campo magnético detectado! Contador: " + String(counter));
         lastHallDetected = true;
-
-        delay(1000); // Esperar 1 segundo para evitar rebotes o múltiples detecciones
+        //delay(1000); // Esperar 1 segundo para evitar rebotes o múltiples detecciones
     } 
-    else if (hallValue >= 2500 && hallValue <= 2700) {
+    else if (hallValue >= minHall && hallValue <= maxHall) {
         // Restablecer el estado solo si volvemos al rango sin campo
         lastHallDetected = false;
     }
@@ -275,6 +307,34 @@ void setupMotores(){
   digitalWrite(MOTOR_IZQ_ADELANTE, LOW);
   digitalWrite(MOTOR_IZQ_ATRAS, LOW);
 }
+void seguidorDeLinea(){
+    setRGBColor(LOW, HIGH, LOW); delay(500); setRGBColor(LOW, LOW, LOW);
+    int derecha = digitalRead(sensorDerecho);
+    int centro  = digitalRead(sensorCentral);
+    int izquierda = digitalRead(sensorIzquierdo);
+
+    Serial.print("Izq: "); Serial.print(izquierda);
+    Serial.print(" | Cen: "); Serial.print(centro);
+    Serial.print(" | Der: "); Serial.println(derecha);
+
+    if (centro == LOW && izquierda == HIGH && derecha == HIGH) {
+        derechaAdelante();
+        izquierdaAdelante();
+        centro = true;
+    } else if ((izquierda == LOW) || (centro == LOW && izquierda == LOW && derecha == HIGH)) {
+        girarIzquierda();
+        izquierda = true;
+    } else if ((derecha == LOW) || (centro == LOW && derecha == LOW && izquierda == HIGH)) {
+        girarDerecha();
+        derecha = true;
+    } else {
+        detener();
+        centro = false;
+        izquierda = false;
+        derecha = false;
+    }
+}
+
 // ------------------------------------
 // SETUP
 // ------------------------------------
@@ -283,7 +343,9 @@ void setup() {
     WiFi.begin(ssid, password);
     setupMotores();
     setupRGB();
-    pinMode(ledCamara, OUTPUT); // Pulsador con resistencia pull-up
+    setupLinea();
+    pinMode(baseCamera, OUTPUT); // on off camara
+    pinMode(ledCamara, OUTPUT);
     pinMode(hallPin, INPUT);           // Sensor hall externo
     display.setBrightness(5);
     display.showNumberDec(counter); // Mostrar valor inicial
@@ -293,20 +355,17 @@ void setup() {
         Serial.print(".");
     }
 
-    Serial.println("\nConectado a la red WiFi");
-    Serial.print("Dirección IP: ");
-    Serial.println(WiFi.localIP());
-
     sendIpToFlask(WiFi.localIP().toString());
     server.on("/estado", HTTP_GET, handleEstado);
     server.on("/message", HTTP_GET, handleMessage);
     server.begin();
-    Serial.println("Servidor web iniciado.");
     ledAzul();
+    Oncamara();
+    offlinterna();
     ledAzulActivo = false;
     ledRojoActivo = false;
     ledVerdeActivo =false;
-    Offcamara();
+    ledAmarilloActivo = false;
 }
 
 // ------------------------------------
@@ -316,9 +375,9 @@ void loop() {
     server.handleClient();
     if (Hallactivated){
         display.showNumberDec(counter, true);
-    // Sensor hall
         detectarCampoMagneticoYContar();
     }
-    
- // Pausa ligera para estabilidad
+    if(seguidor){
+        seguidorDeLinea();
+    }
 }
